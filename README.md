@@ -1,4 +1,4 @@
-<h1 align="center">🎯 CareerBot</h1>
+<h1 align="center">🎯 KariyerBotu</h1>
 <p align="center">
   <i>Yapay zekâ destekli Discord kariyer asistanı</i><br>
   CV analizinden üniversite tavsiyelerine, teknik beceri önerilerinden motivasyon desteğine kadar her şey burada.
