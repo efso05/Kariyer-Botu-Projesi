@@ -1,48 +1,64 @@
-from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
-import torch
+import requests
+import json
 
-# Model bilgisi
-model_name = "MODEL_NAME"
-hf_token = "YOUR_TOKEN"  # Buraya kendi HuggingFace token'ını koy
+# LM Studio'da çalışan sunucunun adresi
+# Eğer LM Studio'da farklı bir port kullanıyorsan, burayı değiştirmelisin.
+API_URL = "Your_local_host_port" # Doğru API endpoint'i
 
-print("Model ve tokenizer yükleniyor, lütfen bekleyin...")
-
-# Tokenizer ve model yükle
-tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=False, token=hf_token)
-model = AutoModelForCausalLM.from_pretrained(model_name, token=hf_token, torch_dtype=torch.float16, device_map="auto")
-
-# Pipeline
-generator = pipeline("text-generation", model=model, tokenizer=tokenizer)
-
-print("Model yüklendi. Sorunu sorabilirsin!")
-
-# Kullanıcıdan input al ve cevabı temizle
-while True:
-    user_input = input("Sen: ")
-    if user_input.lower() in ["çık", "exit", "quit", "çıkış"]:
-        print("Görüşürüz!")
-        break
-
-    # Prompt formatı Vicuna için tipik olarak şöyle olabilir:
-    prompt = f"USER: {user_input}\nASSISTANT:"
+def get_response_from_lm_studio(prompt):
+    """
+    LM Studio'daki yapay zeka modeline mesaj gönderir ve yanıtı alır.
+    """
+    headers = {
+        "Content-Type": "application/json"
+    }
     
-    outputs = generator(
-        prompt,
-        max_length=512,
-        do_sample=True,
-        temperature=0.7,
-        top_p=0.9,
-        top_k=50,
-        num_return_sequences=1,
-        pad_token_id=tokenizer.eos_token_id
-    )
+    data = {
+        "messages": [
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.7,
+        "max_tokens": 1000 
+    }
 
-    # Üretilen metni temizle
-    generated_text = outputs[0]["generated_text"]
+    try:
+        response = requests.post(API_URL, headers=headers, data=json.dumps(data))
+        response.raise_for_status() # HTTP hatalarını kontrol et
+        
+        response_data = response.json()
+        
+        if 'choices' in response_data and len(response_data['choices']) > 0:
+            model_response = response_data['choices'][0]['message']['content']
+            return model_response
+        else:
+            print("Hata: LM Studio'dan geçerli bir yanıt alınamadı. Yanıt formatı beklenenden farklı.")
+            print(f"Dönen yanıt: {response_data}")
+            return None
+            
+    except requests.exceptions.RequestException as e:
+        print(f"İstek sırasında bir hata oluştu: {e}")
+        return None
+    except json.JSONDecodeError:
+        print("Hata: LM Studio'dan gelen yanıt geçerli bir JSON formatında değil.")
+        return None
 
-    # Prompt'tan sonrasını ayıkla
-    answer = generated_text.split("ASSISTANT:")[-1].strip()
+def main():
+    """
+    Kullanıcının terminalden yazmasını ve modelle konuşmasını sağlar.
+    """
+    print("LM Studio ile sohbet etmeye hazırız. Çıkmak için 'çık' yazın.")
+    
+    while True:
+        user_input = input("Sen: ")
+        
+        if user_input.lower() == 'çık':
+            print("Görüşmek üzere!")
+            break
+            
+        response = get_response_from_lm_studio(user_input)
+        
+        if response:
+            print(f"Model: {response}")
 
-    print("Bot:", answer)
-
-
+if __name__ == "__main__":
+    main()
